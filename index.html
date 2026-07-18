@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>记事本</title>
+<style>
+    :root {
+        --bg-body: #f0f0f0;
+        --bg-panel: #ffffff;
+        --bg-titlebar: #f0f0f0;
+        --bg-menubar: #f8f8f8;
+        --border-color: #d0d0d0;
+        --text-color: #1e1e1e;
+        --text-secondary: #444;
+        --text-muted: #888;
+        --hover-bg: #e5e5e5;
+        --dropdown-bg: #f8f8f8;
+        --dropdown-border: #c0c0c0;
+        --dropdown-hover: #e0e0e0;
+        --editor-bg: #ffffff;
+        --editor-text: #1e1e1e;
+        --selection-bg: #add6ff;
+        --shadow-color: rgba(0, 0, 0, 0.15);
+        --divider-color: #dddddd;
+        --accent: #4a90e2;
+    }
+    body.theme-eye-care {
+        --bg-body: #d9ead3;
+        --bg-panel: #c7edcc;
+        --bg-titlebar: #b5d6b2;
+        --bg-menubar: #c7edcc;
+        --border-color: #a0c4a0;
+        --text-color: #1e1e1e;
+        --text-secondary: #2d2d2d;
+        --text-muted: #555;
+        --hover-bg: #b5d6b2;
+        --dropdown-bg: #c7edcc;
+        --dropdown-border: #a0c4a0;
+        --dropdown-hover: #b5d6b2;
+        --editor-bg: #c7edcc;
+        --editor-text: #1e1e1e;
+        --selection-bg: #9bc49b;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --divider-color: #a0c4a0;
+    }
+    body.theme-warm {
+        --bg-body: #f0ead6;
+        --bg-panel: #faf8f5;
+        --bg-titlebar: #f0ead6;
+        --bg-menubar: #faf8f5;
+        --border-color: #d6ceb8;
+        --text-color: #3a3a3a;
+        --text-secondary: #555;
+        --text-muted: #777;
+        --hover-bg: #e8ddc0;
+        --dropdown-bg: #faf8f5;
+        --dropdown-border: #d6ceb8;
+        --dropdown-hover: #e8ddc0;
+        --editor-bg: #faf8f5;
+        --editor-text: #3a3a3a;
+        --selection-bg: #d6ceb8;
+        --shadow-color: rgba(0, 0, 0, 0.1);
+        --divider-color: #d6ceb8;
+    }
+    body.dark {
+        --bg-body: #1e1e1e;
+        --bg-panel: #252526;
+        --bg-titlebar: #2d2d2d;
+        --bg-menubar: #2d2d2d;
+        --border-color: #3c3c3c;
+        --text-color: #e8e8e8;
+        --text-secondary: #b0b0b0;
+        --text-muted: #808080;
+        --hover-bg: #3a3a3a;
+        --dropdown-bg: #2d2d2d;
+        --dropdown-border: #454545;
+        --dropdown-hover: #3a3a3a;
+        --editor-bg: #1e1e1e;
+        --editor-text: #d4d4d4;
+        --selection-bg: #264f78;
+        --shadow-color: rgba(0, 0, 0, 0.5);
+        --divider-color: #454545;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        background: var(--bg-body);
+        display: flex; justify-content: center; align-items: center;
+        height: 100vh; height: 100dvh; margin: 0; overflow: hidden;
+        transition: background-color 0.15s;
+    }
+    .notepad {
+        width: 100%; max-width: 960px; height: calc(100vh - 12px); height: calc(100dvh - 12px);
+        background: var(--bg-panel);
+        box-shadow: 0 4px 24px var(--shadow-color);
+        border-radius: 8px;
+        display: flex; flex-direction: column; overflow: hidden;
+        border: 1px solid var(--border-color);
+        transition: background-color 0.15s, border-color 0.15s;
+    }
+    .tab-bar {
+        background: var(--bg-titlebar);
+        border-bottom: 1px solid var(--border-color);
+        display: flex; align-items: stretch;
+        flex-shrink: 0; overflow: hidden; user-select: none;
+        position: relative;
+    }
+    .tab-bar::after {
+        content: '';
+        position: absolute;
+        right: 36px;
+        top: 0; bottom: 0;
+        width: 30px;
+        background: linear-gradient(to right, transparent, var(--bg-titlebar));
+        pointer-events: none;
+        z-index: 2;
+    }
+    .tab-list {
+        display: flex; overflow-x: auto; flex: 1;
+        scrollbar-width: none;
+    }
+    .tab-list::-webkit-scrollbar { display: none; }
+    .tab {
+        display: flex; align-items: center; gap: 6px;
+        padding: 8px 10px 8px 14px;
+        font-size: 13px; color: var(--text-secondary);
+        border-right: 1px solid var(--border-color);
+        cursor: pointer; white-space: nowrap;
+        width: 148px;
+        flex-shrink: 0;
+        background: transparent; transition: background 0.1s;
+    }
+    .tab .tab-label {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .tab.active { background: var(--bg-panel); color: var(--text-color); font-weight: 500; }
+    .tab:hover { background: var(--hover-bg); }
+    .tab.active:hover { background: var(--bg-panel); }
+    .tab-close {
+        width: 16px; height: 16px; border-radius: 3px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; color: var(--text-muted); flex-shrink: 0;
+    }
+    .tab-close:hover { background: var(--dropdown-hover); color: var(--text-color); }
+    .tab-new {
+        border: none; background: transparent; color: var(--text-secondary);
+        font-size: 18px; width: 36px; cursor: pointer; flex-shrink: 0;
+        transition: background 0.1s; z-index: 3;
+    }
+    .tab-new:hover { background: var(--hover-bg); }
+
+    .menu-bar {
+        background: var(--bg-menubar);
+        padding: 2px 6px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex; flex-wrap: wrap; flex-shrink: 0;
+        position: relative; user-select: none;
+    }
+    .menu-bar .menu-item {
+        padding: 4px 10px; font-size: 13px; color: var(--text-color);
+        cursor: pointer; border-radius: 3px; transition: background 0.15s;
+        position: relative;
+    }
+    .menu-bar .menu-item:hover { background: var(--hover-bg); }
+    .dropdown {
+        display: none; position: absolute; top: 100%; left: 0;
+        background: var(--dropdown-bg); border: 1px solid var(--dropdown-border);
+        border-radius: 0 0 4px 4px; box-shadow: 0 6px 16px var(--shadow-color);
+        min-width: 230px; max-height: 420px; overflow-y: auto;
+        z-index: 100; padding: 4px 0;
+    }
+    .menu-item:hover .dropdown { display: block; }
+    .menu-item.no-hover .dropdown { display: none !important; }
+    .dropdown-item {
+        padding: 5px 24px 5px 16px; font-size: 13px; color: var(--text-color);
+        cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        transition: background 0.1s;
+        max-width: 280px;
+        /* 恢复为普通块级，大纲项单独处理 */
+        display: block;
+    }
+    .dropdown-item:hover { background: var(--dropdown-hover); }
+    .dropdown-item.disabled { color: var(--text-muted); cursor: default; }
+    .dropdown-item.disabled:hover { background: transparent; }
+    .dropdown-item .shortcut { float: right; color: var(--text-muted); font-size: 12px; margin-left: 16px; }
+    .dropdown-item .check-mark { display: inline-block; width: 18px; text-align: center; margin-left: -18px; }
+    /* 大纲专用样式 */
+    .dropdown-item.outline-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+    }
+    .dropdown-item .outline-title {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-right: 12px;
+    }
+    .dropdown-item .outline-count {
+        color: var(--text-muted);
+        font-size: 12px;
+        flex-shrink: 0;
+    }
+    .dropdown hr { border: 0.5px solid var(--divider-color); margin: 4px 0; }
+
+    .editor-wrap {
+        flex: 1; position: relative; overflow: hidden; background: var(--editor-bg);
+    }
+    .welcome-overlay {
+        position: absolute; inset: 0; z-index: 10;
+        display: flex; align-items: center; justify-content: center;
+        background: var(--editor-bg);
+        color: var(--text-muted);
+        font-size: 16px;
+        pointer-events: none;
+    }
+    .editor-wrap.has-tabs .welcome-overlay { display: none; }
+
+    .editor-wrap.drag-hover::after {
+        content: '松开鼠标以导入文件';
+        position: absolute; inset: 10px;
+        border: 3px dashed var(--accent);
+        border-radius: 10px;
+        background: rgba(74, 144, 226, 0.08);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 17px; font-weight: 600; color: var(--accent);
+        pointer-events: none; z-index: 50;
+        animation: dragBreathe 1.3s ease-in-out infinite;
+    }
+    @keyframes dragBreathe {
+        0%, 100% { opacity: 0.5; box-shadow: 0 0 0 0 rgba(74,144,226,0.35) inset; }
+        50% { opacity: 1; box-shadow: 0 0 30px 6px rgba(74,144,226,0.3) inset; }
+    }
+
+    #editor {
+        position: relative; z-index: 2;
+        width: 100%; height: 100%; padding: 10px 14px;
+        border: none; outline: none; resize: none;
+        font-family: 'Cascadia Code', 'Consolas', 'Microsoft YaHei', monospace;
+        font-size: 14px; line-height: 1.65;
+        color: var(--editor-text); background: transparent;
+        tab-size: 4; user-select: text; overflow: auto;
+    }
+    #editor:read-only { color: transparent; }
+    #editor::selection { background: var(--selection-bg); }
+
+    .status-bar {
+        background: var(--bg-titlebar); border-top: 1px solid var(--border-color);
+        padding: 2px 12px; display: flex; justify-content: space-between;
+        font-size: 13px; color: var(--text-secondary); flex-shrink: 0;
+        height: 28px; align-items: center;
+    }
+    .status-bar .status-left { display: flex; gap: 16px; overflow: hidden; }
+    .status-bar .status-right { display: flex; gap: 14px; }
+    .status-bar .status-item { white-space: nowrap; }
+    .status-bar .status-item strong { font-weight: 500; color: var(--text-color); }
+    .status-bar.hidden { display: none; }
+
+    .fr-overlay { display: none; position: fixed; inset: 0; z-index: 1000; pointer-events: none; }
+    .fr-dialog {
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        width: 380px; background: var(--bg-panel); border: 1px solid var(--border-color);
+        border-radius: 6px; box-shadow: 0 8px 30px var(--shadow-color);
+        pointer-events: auto; overflow: hidden;
+    }
+    .fr-header {
+        background: var(--bg-titlebar); padding: 8px 12px;
+        display: flex; justify-content: space-between; align-items: center;
+        cursor: move; font-size: 13px; font-weight: 500; color: var(--text-color);
+        border-bottom: 1px solid var(--border-color);
+    }
+    .fr-close {
+        border: none; background: transparent; color: var(--text-secondary);
+        font-size: 14px; cursor: pointer; padding: 2px 6px; border-radius: 3px;
+    }
+    .fr-close:hover { background: var(--hover-bg); }
+    .fr-body { padding: 12px 14px 6px 14px; }
+    .fr-body label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+    .fr-row { margin-top: 10px; }
+    .fr-body input[type="text"] {
+        width: 100%; padding: 5px 8px; font-size: 13px;
+        border: 1px solid var(--border-color); border-radius: 3px;
+        background: var(--editor-bg); color: var(--editor-text); outline: none;
+    }
+    .fr-body input[type="text"]:focus { border-color: var(--accent); }
+    .fr-options { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
+    .fr-options label { display: flex; align-items: center; gap: 4px; margin-bottom: 0; }
+    .fr-actions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px 12px 14px; }
+    .fr-actions button {
+        flex: 1 1 auto; padding: 5px 10px; font-size: 12px;
+        border: 1px solid var(--border-color); border-radius: 3px;
+        background: var(--bg-menubar); color: var(--text-color); cursor: pointer;
+        transition: background 0.1s;
+    }
+    .fr-actions button:hover { background: var(--hover-bg); }
+    .fr-actions button:disabled { opacity: 0.5; cursor: default; }
+    .fr-status { padding: 0 14px 10px 14px; font-size: 12px; color: var(--text-muted); min-height: 18px; }
+
+    @media (max-width: 600px) {
+        .notepad { max-width: 100%; border-radius: 0; height: 100vh; height: 100dvh; }
+        .menu-bar .menu-item { padding: 2px 8px; font-size: 12px; }
+        .status-bar { font-size: 12px; height: auto; padding: 4px 10px; }
+        .fr-dialog { width: calc(100% - 16px); left: 8px; transform: translateY(-50%); }
+    }
+</style>
+</head>
+<body>
+<div class="notepad">
+    <div class="tab-bar" id="tabBar">
+        <div class="tab-list" id="tabList"></div>
+        <button class="tab-new" id="newTabBtn" title="新建文档 (Ctrl+N)">＋</button>
+    </div>
+    <div class="menu-bar">
+        <div class="menu-item">文件
+            <div class="dropdown">
+                <div class="dropdown-item" data-action="new">新建文档 <span class="shortcut">Ctrl+N</span></div>
+                <div class="dropdown-item" data-action="open">打开… <span class="shortcut">Ctrl+O</span></div>
+                <div class="dropdown-item" data-action="save">保存 <span class="shortcut">Ctrl+S</span></div>
+                <div class="dropdown-item" data-action="saveas">另存为… <span class="shortcut">Ctrl+Shift+S</span></div>
+                <div class="dropdown-item" data-action="closeTab">关闭标签页 <span class="shortcut">Ctrl+W</span></div>
+                <hr id="recentDivider" style="display:none;">
+                <div id="recentFilesContainer"></div>
+            </div>
+        </div>
+        <div class="menu-item">编辑
+            <div class="dropdown">
+                <div class="dropdown-item" data-action="undo">撤销 <span class="shortcut">Ctrl+Z</span></div>
+                <div class="dropdown-item" data-action="redo">重做 <span class="shortcut">Ctrl+Y</span></div>
+                <hr>
+                <div class="dropdown-item" data-action="cut">剪切 <span class="shortcut">Ctrl+X</span></div>
+                <div class="dropdown-item" data-action="copy">复制 <span class="shortcut">Ctrl+C</span></div>
+                <div class="dropdown-item" data-action="paste">粘贴 <span class="shortcut">Ctrl+V</span></div>
+                <div class="dropdown-item" data-action="selectall">全选 <span class="shortcut">Ctrl+A</span></div>
+                <hr>
+                <div class="dropdown-item" data-action="find">查找 <span class="shortcut">Ctrl+F</span></div>
+                <div class="dropdown-item" data-action="replace">替换 <span class="shortcut">Ctrl+H</span></div>
+            </div>
+        </div>
+        <div class="menu-item">查看
+            <div class="dropdown">
+                <div class="dropdown-item" data-action="wordwrap">
+                    <span class="check-mark" id="wordWrapMark">✓</span> 自动换行
+                </div>
+                <div class="dropdown-item" data-action="statusbar">
+                    <span class="check-mark" id="statusBarMark">✓</span> 状态栏
+                </div>
+                <div class="dropdown-item" data-action="togglePunctuation">
+                    <span class="check-mark" id="punctMark"> </span> 字数统计包含标点
+                </div>
+                <div class="dropdown-item" data-action="toggleLineCount">
+                    <span class="check-mark" id="lineCountMark"> </span> 显示行数
+                </div>
+            </div>
+        </div>
+        <div class="menu-item">外观
+            <div class="dropdown">
+                <div class="dropdown-item disabled">主题</div>
+                <div class="dropdown-item" data-action="themeDefault"><span class="check-mark" id="themeDefaultMark">✓</span> 浅色</div>
+                <div class="dropdown-item" data-action="themeDark"><span class="check-mark" id="themeDarkMark"> </span> 深色</div>
+                <div class="dropdown-item" data-action="themeEyeCare"><span class="check-mark" id="themeEyeCareMark"> </span> 护眼</div>
+                <div class="dropdown-item" data-action="themeWarm"><span class="check-mark" id="themeWarmMark"> </span> 复古</div>
+                <hr>
+                <div class="dropdown-item disabled">字体样式</div>
+                <div class="dropdown-item" data-action="fontStyleDefault"><span class="check-mark" id="fontStyleDefaultMark">✓</span> 默认等宽</div>
+                <div class="dropdown-item" data-action="fontStyleSans"><span class="check-mark" id="fontStyleSansMark"> </span> 中文无衬线</div>
+                <div class="dropdown-item" data-action="fontStyleSerif"><span class="check-mark" id="fontStyleSerifMark"> </span> 中文衬线</div>
+                <div class="dropdown-item" data-action="fontStyleMono"><span class="check-mark" id="fontStyleMonoMark"> </span> Courier New</div>
+                <hr>
+                <div class="dropdown-item disabled">字体大小</div>
+                <div class="dropdown-item" data-action="fontIncrease">放大 <span class="shortcut">Ctrl+=</span></div>
+                <div class="dropdown-item" data-action="fontDecrease">缩小 <span class="shortcut">Ctrl+-</span></div>
+                <div class="dropdown-item" data-action="fontReset">重置 <span class="shortcut">Ctrl+0</span></div>
+                <hr>
+                <div class="dropdown-item disabled">行高</div>
+                <div class="dropdown-item" data-action="lineHeight15"><span class="check-mark" id="lineHeight15Mark"> </span> 1.5</div>
+                <div class="dropdown-item" data-action="lineHeight165"><span class="check-mark" id="lineHeight165Mark">✓</span> 1.65（默认）</div>
+                <div class="dropdown-item" data-action="lineHeight18"><span class="check-mark" id="lineHeight18Mark"> </span> 1.8</div>
+                <div class="dropdown-item" data-action="lineHeight20"><span class="check-mark" id="lineHeight20Mark"> </span> 2.0</div>
+            </div>
+        </div>
+        <div class="menu-item" id="outlineMenuItem">大纲
+            <div class="dropdown" id="outlineDropdown">
+                <div class="dropdown-item disabled">未检测到标题结构</div>
+            </div>
+        </div>
+    </div>
+    <div class="editor-wrap" id="editorWrap">
+        <textarea id="editor" spellcheck="false" readonly></textarea>
+        <div class="welcome-overlay">新建文档或打开文件以开始编辑</div>
+    </div>
+    <div class="status-bar" id="statusBar">
+        <div class="status-left">
+            <span class="status-item">字数: <strong id="charCount">0</strong></span>
+            <span class="status-item" id="selectedCharItem" style="display:none;">选中: <strong id="selectedCharCount">0</strong></span>
+            <span class="status-item" id="lineCountItem" style="display:none;">行数: <strong id="lineCount">1</strong></span>
+            <span class="status-item" id="selectedLineItem" style="display:none;">选中行: <strong id="selectedLineCount">0</strong></span>
+        </div>
+        <div class="status-right">
+            <span class="status-item" id="fontSizeStatus">14px</span>
+            <span class="status-item" id="encodingStatus">UTF-8</span>
+            <span class="status-item" id="wrapStatus">自动换行</span>
+            <span class="status-item" id="themeStatus">浅色</span>
+        </div>
+    </div>
+</div>
+<div class="fr-overlay" id="frOverlay">
+    <div class="fr-dialog" id="frDialog">
+        <div class="fr-header" id="frHeader">
+            <span id="frTitle">查找</span>
+            <button class="fr-close" id="frClose" title="关闭">✕</button>
+        </div>
+        <div class="fr-body">
+            <label for="frFindInput">查找内容:</label>
+            <input type="text" id="frFindInput" autocomplete="off">
+            <div class="fr-row" id="frReplaceRow">
+                <label for="frReplaceInput">替换为:</label>
+                <input type="text" id="frReplaceInput" autocomplete="off">
+            </div>
+            <div class="fr-options">
+                <label><input type="checkbox" id="frCaseSensitive"> 区分大小写</label>
+                <label><input type="checkbox" id="frWrap" checked> 循环查找</label>
+                <label><input type="checkbox" id="frWholeWord"> 全字匹配</label>
+                <label><input type="checkbox" id="frReverse"> ↑ 倒序</label>
+            </div>
+        </div>
+        <div class="fr-actions">
+            <button id="frSearch">查找</button>
+            <button id="frFindNext" disabled>查找下一个</button>
+            <button id="frReplaceBtn" class="fr-replace-only" style="display:none;">替换</button>
+            <button id="frReplaceAll" class="fr-replace-only" style="display:none;">全部替换</button>
+            <button id="frCancel">取消</button>
+        </div>
+        <div class="fr-status" id="frStatus"></div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    /* ========== Web Worker 查找 ========== */
+    const workerCode = `
+        self.onmessage = function(e) {
+            const { text, query, caseSensitive, wholeWord } = e.data;
+            if (!query) { self.postMessage([]); return; }
+            function escapeRegExp(str) { return str.replace(/[.*+?^$\${}()|[\\]\\\\]/g, '\\\\$&'); }
+            let pattern = escapeRegExp(query);
+            if (wholeWord) pattern = '\\\\b' + pattern + '\\\\b';
+            const flags = caseSensitive ? 'g' : 'gi';
+            const re = new RegExp(pattern, flags);
+            const matches = [];
+            let match;
+            while ((match = re.exec(text)) !== null) {
+                matches.push({ start: match.index, end: match.index + match[0].length });
+            }
+            self.postMessage(matches);
+        };
+    `;
+    const workerBlob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(workerBlob);
+    const searchWorker = new Worker(workerUrl);
+
+    const App = {
+        tabs: [],
+        activeTabId: null,
+        nextTabId: 1,
+        recentFiles: [],
+        isWordWrap: true,
+        isStatusBarVisible: true,
+        includePunctuation: false,
+        showLineCount: false,
+        fontSize: 14,
+        lineHeight: 1.65,
+        fontFamily: "'Cascadia Code', 'Consolas', 'Microsoft YaHei', monospace",
+        currentTheme: 'default',
+        frMatches: [],
+        frMatchIndex: -1,
+        updatePending: false,
+        autoSaveTimer: null,
+        _measurer: null,
+        _outlineCache: null,
+        _outlineDirty: true,
+        _isUndoRedo: false,
+
+        get active() { return this.tabs.find(t => t.id === this.activeTabId); },
+        get hasTabs() { return this.tabs.length > 0; },
+
+        /* ========== 自建撤销栈 ========== */
+        MAX_UNDO: 200,
+        pushUndo(tab) {
+            if (!tab) return;
+            if (this._isUndoRedo) return;
+            const last = tab.undoStack[tab.undoStack.length - 1];
+            if (last && last.value === editor.value && last.selectionStart === editor.selectionStart && last.selectionEnd === editor.selectionEnd) return;
+            tab.undoStack.push({
+                value: editor.value,
+                selectionStart: editor.selectionStart,
+                selectionEnd: editor.selectionEnd
+            });
+            if (tab.undoStack.length > this.MAX_UNDO) tab.undoStack.shift();
+            tab.redoStack = [];
+        },
+        undo() {
+            const tab = this.active;
+            if (!tab || tab.undoStack.length === 0) return;
+            this._isUndoRedo = true;
+            tab.redoStack.push({
+                value: editor.value,
+                selectionStart: editor.selectionStart,
+                selectionEnd: editor.selectionEnd
+            });
+            const prev = tab.undoStack.pop();
+            editor.value = prev.value;
+            editor.selectionStart = prev.selectionStart;
+            editor.selectionEnd = prev.selectionEnd;
+            this.markDirty();
+            this.scheduleUIUpdate();
+            this._isUndoRedo = false;
+        },
+        redo() {
+            const tab = this.active;
+            if (!tab || tab.redoStack.length === 0) return;
+            this._isUndoRedo = true;
+            tab.undoStack.push({
+                value: editor.value,
+                selectionStart: editor.selectionStart,
+                selectionEnd: editor.selectionEnd
+            });
+            const next = tab.redoStack.pop();
+            editor.value = next.value;
+            editor.selectionStart = next.selectionStart;
+            editor.selectionEnd = next.selectionEnd;
+            this.markDirty();
+            this.scheduleUIUpdate();
+            this._isUndoRedo = false;
+        },
+
+        updateEditorState() {
+            const hasTabs = this.hasTabs;
+            editor.readOnly = !hasTabs;
+            editorWrap.classList.toggle('has-tabs', hasTabs);
+            if (!hasTabs) {
+                editor.value = '';
+                this.updateStats();
+                this.closeFindReplace();
+            }
+        },
+
+        createTab(opts = {}) {
+            const newTab = {
+                id: this.nextTabId++,
+                name: opts.name || '未命名',
+                content: opts.content || '',
+                fileHandle: opts.fileHandle || null,
+                isDirty: !!opts.isDirty,
+                encoding: opts.encoding || 'UTF-8',
+                selectionStart: 0,
+                selectionEnd: 0,
+                scrollTop: 0,
+                lastSaveInfo: '',
+                undoStack: [],
+                redoStack: []
+            };
+            this.tabs.push(newTab);
+            return newTab;
+        },
+
+        switchTab(id) {
+            if (!this.hasTabs || id === this.activeTabId) return;
+            clearTimeout(this.autoSaveTimer);
+            const cur = this.active;
+            if (cur) {
+                cur.content = editor.value;
+                cur.selectionStart = editor.selectionStart;
+                cur.selectionEnd = editor.selectionEnd;
+                cur.scrollTop = editor.scrollTop;
+                if (cur.isDirty && cur.fileHandle) {
+                    this.saveCurrentTabSilently(cur);
+                }
+            }
+            this.activeTabId = id;
+            this.loadTab(this.active);
+        },
+
+        loadTab(tab) {
+            editor.value = tab.content;
+            editor.selectionStart = tab.selectionStart || 0;
+            editor.selectionEnd = tab.selectionEnd || 0;
+            editor.scrollTop = tab.scrollTop || 0;
+            this.updateEncodingStatus(tab.encoding);
+            this.updateStats();
+            this.closeFindReplace();
+            this.renderTabBar();
+            this._outlineDirty = true;
+            this.updateEditorState();
+        },
+
+        async newFile() {
+            clearTimeout(this.autoSaveTimer);
+            try {
+                if (window.showSaveFilePicker) {
+                    const handle = await window.showSaveFilePicker({
+                        startIn: 'desktop',
+                        id: 'plain-notepad-new-workspace',
+                        suggestedName: '无标题.txt',
+                        types: [{ description: '文本文件', accept: { 'text/plain': ['.txt'] } }]
+                    });
+                    const writable = await handle.createWritable();
+                    await writable.write('');
+                    await writable.close();
+                    const file = await handle.getFile();
+                    const existing = await this.findExistingTab(handle);
+                    if (existing) {
+                        this.switchTab(existing.id);
+                        return;
+                    }
+                    const tab = this.createTab({ name: file.name, content: '', fileHandle: handle, encoding: 'UTF-8', isDirty: false });
+                    this.activeTabId = tab.id;
+                    this.loadTab(tab);
+                    this.addRecentFile(handle, file.name);
+                    editor.focus();
+                } else {
+                    this.createUnnamedTab();
+                }
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                console.error('新建文档失败:', err);
+                this.createUnnamedTab();
+            }
+        },
+
+        createUnnamedTab() {
+            const cur = this.active;
+            if (cur) {
+                cur.content = editor.value;
+                cur.selectionStart = editor.selectionStart;
+                cur.selectionEnd = editor.selectionEnd;
+                cur.scrollTop = editor.scrollTop;
+            }
+            const tab = this.createTab({ name: '未命名', content: '' });
+            this.activeTabId = tab.id;
+            this.loadTab(tab);
+            editor.focus();
+        },
+
+        closeTab(id) {
+            const idx = this.tabs.findIndex(t => t.id === id);
+            if (idx === -1) return;
+            const tab = this.tabs[idx];
+            const dirty = tab.id === this.activeTabId ? this.active.isDirty : tab.isDirty;
+            if (dirty && !confirm(`"${tab.name}" 有未保存的修改，确定关闭吗？`)) return;
+            clearTimeout(this.autoSaveTimer);
+            this.tabs.splice(idx, 1);
+            if (this.tabs.length === 0) {
+                this.activeTabId = null;
+                this.updateEditorState();
+                this.renderTabBar();
+            } else if (id === this.activeTabId) {
+                const newIdx = Math.min(idx, this.tabs.length - 1);
+                this.activeTabId = this.tabs[newIdx].id;
+                this.loadTab(this.tabs[newIdx]);
+            } else {
+                this.renderTabBar();
+            }
+        },
+
+        async findExistingTab(handle) {
+            if (!handle || !handle.isSameEntry) return null;
+            for (const tab of this.tabs) {
+                if (tab.fileHandle && await tab.fileHandle.isSameEntry(handle)) {
+                    return tab;
+                }
+            }
+            return null;
+        },
+
+        async openNewTabWithFile(text, encoding, handle, name) {
+            const existing = await this.findExistingTab(handle);
+            if (existing) {
+                this.switchTab(existing.id);
+                return;
+            }
+            const cur = this.active;
+            if (cur) {
+                cur.content = editor.value;
+                cur.selectionStart = editor.selectionStart;
+                cur.selectionEnd = editor.selectionEnd;
+                cur.scrollTop = editor.scrollTop;
+            }
+            const tab = this.createTab({ name, content: text, fileHandle: handle, encoding, isDirty: false });
+            this.activeTabId = tab.id;
+            this.loadTab(tab);
+        },
+
+        async openFile() {
+            try {
+                if (!window.showOpenFilePicker) { this.fallbackOpenFile(); return; }
+                const [handle] = await window.showOpenFilePicker({
+                    startIn: 'desktop',
+                    types: [{ description: '文本文件', accept: { 'text/plain': ['.txt','.md','.log','.ini','.cfg','.conf'] } }],
+                    multiple: false
+                });
+                const file = await handle.getFile();
+                const result = await this.readFileSmart(file);
+                await this.openNewTabWithFile(result.text, result.encoding, handle, file.name);
+                this.addRecentFile(handle, file.name);
+            } catch (err) {
+                if (err.name !== 'AbortError') console.error(err);
+            }
+        },
+        fallbackOpenFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt,.md,.log,.ini,.cfg,.conf';
+            input.onchange = async () => {
+                const file = input.files[0];
+                if (!file) return;
+                const result = await this.readFileSmart(file);
+                await this.openNewTabWithFile(result.text, result.encoding, null, file.name);
+            };
+            input.click();
+        },
+
+        async saveCurrentTabSilently(tab) {
+            if (!tab || !tab.fileHandle) return;
+            try {
+                const writable = await tab.fileHandle.createWritable();
+                await writable.write(tab.content);
+                await writable.close();
+                tab.isDirty = false;
+                tab.lastSaveInfo = `已自动保存 ${this.nowTimeStr()}`;
+                if (tab.id === this.activeTabId) this.renderTabBar();
+            } catch (err) {
+                if (err.name === 'NotFoundError') {
+                    tab.fileHandle = null;
+                    tab.name = '未命名（已丢失链接）';
+                    this.renderTabBar();
+                }
+            }
+        },
+
+        scheduleAutoSave() {
+            clearTimeout(this.autoSaveTimer);
+            if (!this.active || !this.active.fileHandle) return;
+            this.autoSaveTimer = setTimeout(() => this.performAutoSave(), 10000);
+        },
+
+        async performAutoSave() {
+            const tab = this.active;
+            if (!tab || !tab.fileHandle || !tab.isDirty) return;
+            try {
+                const writable = await tab.fileHandle.createWritable();
+                await writable.write(editor.value);
+                await writable.close();
+                this.finishSave(tab.id, '已自动保存', tab.name);
+            } catch (err) {
+                if (err.name === 'NotFoundError') {
+                    tab.fileHandle = null;
+                    tab.name = '未命名（已丢失链接）';
+                    this.renderTabBar();
+                }
+            }
+        },
+
+        async saveFile() {
+            const tab = this.active;
+            if (!tab) return;
+            try {
+                if (tab.fileHandle) {
+                    const writable = await tab.fileHandle.createWritable();
+                    await writable.write(editor.value);
+                    await writable.close();
+                    this.finishSave(tab.id, '已保存', tab.name);
+                    return;
+                }
+                if (window.showSaveFilePicker) { await this.saveAsFile(); }
+                else { this.fallbackSaveAs(); }
+            } catch (err) {
+                if (err.name === 'NotFoundError') {
+                    alert('文件已被移动或删除，请另存为新文件');
+                    tab.fileHandle = null;
+                    tab.name = '未命名（已丢失链接）';
+                    this.renderTabBar();
+                } else if (err.name !== 'AbortError') {
+                    alert('保存失败: ' + err.message);
+                }
+            }
+        },
+
+        async saveAsFile() {
+            if (!window.showSaveFilePicker) { this.fallbackSaveAs(); return; }
+            const tab = this.active;
+            const defaultName = tab.name !== '未命名' ? tab.name : '无标题.txt';
+            const options = {
+                startIn: 'desktop',
+                id: 'plain-notepad-save-workspace',
+                suggestedName: defaultName,
+                types: [{ description: '文本文件', accept: { 'text/plain': ['.txt'] } }]
+            };
+            if (tab.fileHandle) options.startIn = tab.fileHandle;
+            const handle = await window.showSaveFilePicker(options);
+            const writable = await handle.createWritable();
+            await writable.write(editor.value);
+            await writable.close();
+            tab.fileHandle = handle;
+            const file = await handle.getFile();
+            this.finishSave(tab.id, '已保存', file.name);
+            this.addRecentFile(handle, file.name);
+        },
+
+        fallbackSaveAs() {
+            let name = prompt('输入文件名:', this.active.name !== '未命名' ? this.active.name.replace(/\.txt$/i,'') : '无标题');
+            if (!name) return;
+            name = name.trim() || '无标题';
+            const blob = new Blob([editor.value], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = name.endsWith('.txt') ? name : name + '.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+            this.finishSave(this.active.id, '已保存副本', a.download);
+        },
+
+        finishSave(tabId, method, name) {
+            const tab = this.tabs.find(t => t.id === tabId);
+            if (tab) {
+                tab.isDirty = false;
+                tab.lastSaveInfo = `${method} ${this.nowTimeStr()}`;
+                tab.name = name;
+            }
+            if (tabId === this.activeTabId) this.renderTabBar();
+        },
+
+        nowTimeStr() {
+            const d = new Date();
+            return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+        },
+
+        addRecentFile(handle, name) {
+            if (!handle) return;
+            this.recentFiles = this.recentFiles.filter(rf => rf.name !== name);
+            this.recentFiles.unshift({ name, handle });
+            if (this.recentFiles.length > 6) this.recentFiles.pop();
+            this.renderRecentMenu();
+        },
+        renderRecentMenu() {
+            recentFilesContainer.innerHTML = '';
+            if (this.recentFiles.length === 0) { recentDivider.style.display = 'none'; return; }
+            recentDivider.style.display = 'block';
+            this.recentFiles.forEach(rf => {
+                const div = document.createElement('div');
+                div.className = 'dropdown-item';
+                div.textContent = rf.name;
+                div.title = rf.name;
+                div.addEventListener('click', () => this.openRecentFile(rf.handle));
+                recentFilesContainer.appendChild(div);
+            });
+        },
+        async openRecentFile(handle) {
+            try {
+                if (handle.queryPermission) {
+                    let perm = await handle.queryPermission({ mode: 'readwrite' });
+                    if (perm !== 'granted') perm = await handle.requestPermission({ mode: 'readwrite' });
+                    if (perm !== 'granted') { alert('没有权限访问该文件。'); return; }
+                }
+                const file = await handle.getFile();
+                const result = await this.readFileSmart(file);
+                await this.openNewTabWithFile(result.text, result.encoding, handle, file.name);
+                this.addRecentFile(handle, file.name);
+            } catch { alert('打开文件失败，文件可能已被移动或删除。'); }
+        },
+
+        async readFileSmart(file) {
+            const buffer = await file.arrayBuffer();
+            try {
+                return { text: new TextDecoder('utf-8', { fatal: true }).decode(buffer), encoding: 'UTF-8' };
+            } catch {
+                try { return { text: new TextDecoder('gbk').decode(buffer), encoding: 'GBK' }; }
+                catch { return { text: new TextDecoder('utf-8').decode(buffer), encoding: 'UTF-8' }; }
+            }
+        },
+
+        updateEncodingStatus(enc) { encodingStatus.textContent = enc || 'UTF-8'; },
+
+        applyTheme(theme) {
+            this.currentTheme = theme;
+            document.body.classList.remove('dark', 'theme-eye-care', 'theme-warm');
+            if (theme === 'dark') { document.body.classList.add('dark'); themeStatus.textContent = '深色'; }
+            else if (theme === 'eye-care') { document.body.classList.add('theme-eye-care'); themeStatus.textContent = '护眼'; }
+            else if (theme === 'warm') { document.body.classList.add('theme-warm'); themeStatus.textContent = '复古'; }
+            else { themeStatus.textContent = '浅色'; }
+            this.updateThemeMarks();
+            try { localStorage.setItem('notepad-theme', theme); } catch(e) {}
+        },
+        updateThemeMarks() {
+            const t = this.currentTheme;
+            document.getElementById('themeDefaultMark').textContent = (t === 'default') ? '✓' : ' ';
+            document.getElementById('themeDarkMark').textContent = (t === 'dark') ? '✓' : ' ';
+            document.getElementById('themeEyeCareMark').textContent = (t === 'eye-care') ? '✓' : ' ';
+            document.getElementById('themeWarmMark').textContent = (t === 'warm') ? '✓' : ' ';
+        },
+        setFontStyle(styleId) {
+            const styles = {
+                default: "'Cascadia Code', 'Consolas', 'Microsoft YaHei', monospace",
+                sans: "'Microsoft YaHei', 'Segoe UI', sans-serif",
+                serif: "'SimSun', '宋体', 'Noto Serif CJK SC', serif",
+                mono: "'Courier New', 'Consolas', monospace"
+            };
+            this.fontFamily = styles[styleId] || styles.default;
+            this.applyFontSettings();
+            this.updateFontStyleMarks(styleId);
+            try { localStorage.setItem('notepad-font-style', styleId); } catch(e) {}
+        },
+        updateFontStyleMarks(active) {
+            document.getElementById('fontStyleDefaultMark').textContent = (active === 'default') ? '✓' : ' ';
+            document.getElementById('fontStyleSansMark').textContent = (active === 'sans') ? '✓' : ' ';
+            document.getElementById('fontStyleSerifMark').textContent = (active === 'serif') ? '✓' : ' ';
+            document.getElementById('fontStyleMonoMark').textContent = (active === 'mono') ? '✓' : ' ';
+        },
+        setLineHeight(lh) {
+            this.lineHeight = lh;
+            this.applyFontSettings();
+            this.updateLineHeightMarks();
+            try { localStorage.setItem('notepad-line-height', lh); } catch(e) {}
+        },
+        updateLineHeightMarks() {
+            const lh = this.lineHeight;
+            document.getElementById('lineHeight15Mark').textContent = (lh === 1.5) ? '✓' : ' ';
+            document.getElementById('lineHeight165Mark').textContent = (lh === 1.65) ? '✓' : ' ';
+            document.getElementById('lineHeight18Mark').textContent = (lh === 1.8) ? '✓' : ' ';
+            document.getElementById('lineHeight20Mark').textContent = (lh === 2.0) ? '✓' : ' ';
+        },
+        applyFontSettings() {
+            editor.style.fontFamily = this.fontFamily;
+            editor.style.lineHeight = this.lineHeight;
+            if (this._measurer) {
+                this._measurer.style.fontFamily = this.fontFamily;
+                this._measurer.style.lineHeight = this.lineHeight;
+            }
+        },
+        setFontSize(size) {
+            this.fontSize = Math.min(32, Math.max(10, size));
+            editor.style.fontSize = this.fontSize + 'px';
+            fontSizeStatus.textContent = this.fontSize + 'px';
+            try { localStorage.setItem('notepad-font-size', this.fontSize); } catch(e) {}
+        },
+        adjustFontSize(delta) { this.setFontSize(this.fontSize + delta); },
+        resetFontSize() { this.setFontSize(14); },
+        applyWordWrap() {
+            editor.style.whiteSpace = this.isWordWrap ? 'pre-wrap' : 'pre';
+            editor.style.overflowX = this.isWordWrap ? 'hidden' : 'auto';
+            editor.style.overflowY = 'auto';
+            wrapStatus.textContent = this.isWordWrap ? '自动换行' : '不换行';
+            document.getElementById('wordWrapMark').textContent = this.isWordWrap ? '✓' : ' ';
+        },
+        updateStatusBarMark() {
+            document.getElementById('statusBarMark').textContent = this.isStatusBarVisible ? '✓' : ' ';
+        },
+
+        markDirty() {
+            if (!this.active) return;
+            if (!this.active.isDirty) {
+                this.active.isDirty = true;
+                this.renderTabBar();
+            }
+            this.scheduleAutoSave();
+            this._outlineDirty = true;
+        },
+
+        updateStats() {
+            if (!this.hasTabs) { charCount.textContent = '0'; lineCount.textContent = '1'; return; }
+            const text = editor.value;
+            const charCnt = this.includePunctuation ? text.length : (text.match(/[\u4e00-\u9fa5a-zA-Z0-9]/g) || []).length;
+            charCount.textContent = charCnt;
+            const lineCnt = text.split('\n').length;
+            lineCount.textContent = lineCnt;
+            lineCountItem.style.display = this.showLineCount ? 'inline' : 'none';
+            lineCountMark.textContent = this.showLineCount ? '✓' : ' ';
+            punctMark.textContent = this.includePunctuation ? '✓' : ' ';
+            const selStart = editor.selectionStart, selEnd = editor.selectionEnd;
+            if (selEnd > selStart) {
+                const selText = text.slice(selStart, selEnd);
+                let selCnt = selText.length;
+                if (!this.includePunctuation) selCnt = (selText.match(/[\u4e00-\u9fa5a-zA-Z0-9]/g) || []).length;
+                selectedCharItem.style.display = 'inline';
+                selectedCharCount.textContent = selCnt;
+                if (this.showLineCount) {
+                    selectedLineItem.style.display = 'inline';
+                    selectedLineCount.textContent = selText.split('\n').length;
+                } else { selectedLineItem.style.display = 'none'; }
+            } else { selectedCharItem.style.display = 'none'; selectedLineItem.style.display = 'none'; }
+        },
+
+        escapeRegExp(str) { return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); },
+        LARGE_FILE_THRESHOLD: 200 * 1024,
+        _matchAbortController: null,
+
+        async computeMatchesAsync(query, caseSensitive, wholeWord) {
+            const text = editor.value;
+            if (!query) return [];
+            if (text.length < this.LARGE_FILE_THRESHOLD) {
+                const matches = [];
+                const re = new RegExp(this.buildPattern(query, caseSensitive, wholeWord), caseSensitive ? 'g' : 'gi');
+                let match;
+                while ((match = re.exec(text)) !== null) matches.push({ start: match.index, end: match.index + match[0].length });
+                return matches;
+            }
+            if (window.Worker) {
+                return new Promise((resolve) => {
+                    searchWorker.onmessage = function(e) { resolve(e.data); };
+                    searchWorker.postMessage({ text, query, caseSensitive, wholeWord });
+                });
+            } else {
+                if (this._matchAbortController) this._matchAbortController.abort();
+                const controller = new AbortController();
+                this._matchAbortController = controller;
+                const signal = controller.signal;
+                const re = new RegExp(this.buildPattern(query, caseSensitive, wholeWord), caseSensitive ? 'g' : 'gi');
+                const overlap = Math.min(query.length + 100, 50000 - 1);
+                return new Promise((resolve) => {
+                    const matches = [];
+                    let lastIndex = 0;
+                    const chunkSize = 50000;
+                    function processChunk() {
+                        if (signal.aborted) { resolve([]); return; }
+                        if (lastIndex >= text.length) { resolve(matches); return; }
+                        const end = Math.min(lastIndex + chunkSize, text.length);
+                        const extraEnd = Math.min(end + overlap, text.length);
+                        const chunk = text.slice(lastIndex, extraEnd);
+                        re.lastIndex = 0;
+                        let m;
+                        while ((m = re.exec(chunk)) !== null) {
+                            const start = lastIndex + m.index;
+                            if (start < end) { matches.push({ start, end: start + m[0].length }); }
+                        }
+                        lastIndex = end;
+                        setTimeout(processChunk, 0);
+                    }
+                    processChunk();
+                });
+            }
+        },
+
+        buildPattern(query, caseSensitive, wholeWord) {
+            let pattern = this.escapeRegExp(query);
+            if (wholeWord) pattern = '\\b' + pattern + '\\b';
+            return pattern;
+        },
+
+        async performSearch() {
+            const findInput = document.getElementById('frFindInput');
+            const query = findInput.value;
+            if (!query) return;
+            const caseSensitive = document.getElementById('frCaseSensitive').checked;
+            const wholeWord = document.getElementById('frWholeWord').checked;
+            const matches = await this.computeMatchesAsync(query, caseSensitive, wholeWord);
+            this.frMatches = matches;
+            const status = document.getElementById('frStatus');
+            const findNextBtn = document.getElementById('frFindNext');
+            const replaceBtn = document.getElementById('frReplaceBtn');
+            if (matches.length === 0) {
+                status.textContent = `找不到"${query}"`;
+                findNextBtn.disabled = true;
+                replaceBtn.disabled = true;
+                return;
+            }
+            const reverse = document.getElementById('frReverse').checked;
+            this.frMatchIndex = reverse ? matches.length - 1 : 0;
+            const m = matches[this.frMatchIndex];
+            editor.focus();
+            editor.setSelectionRange(m.start, m.end);
+            this.scrollEditorToCharIndex(m.start);
+            status.textContent = `${this.frMatchIndex + 1} / ${matches.length} 处匹配`;
+            findNextBtn.disabled = false;
+            replaceBtn.disabled = false;
+        },
+        getNextMatchIndex(cursorPos, reverse) {
+            const matches = this.frMatches;
+            if (!matches.length) return -1;
+            if (reverse) {
+                for (let i = matches.length - 1; i >= 0; i--) { if (matches[i].end <= cursorPos) return i; }
+                return document.getElementById('frWrap').checked ? matches.length - 1 : -1;
+            } else {
+                for (let i = 0; i < matches.length; i++) { if (matches[i].start >= cursorPos) return i; }
+                return document.getElementById('frWrap').checked ? 0 : -1;
+            }
+        },
+        findNext() {
+            if (!this.frMatches.length) return;
+            const reverse = document.getElementById('frReverse').checked;
+            if (this.frMatchIndex >= 0 && this.frMatchIndex < this.frMatches.length) {
+                const currentMatch = this.frMatches[this.frMatchIndex];
+                const cursorPos = editor.selectionEnd;
+                if (cursorPos >= currentMatch.start && cursorPos <= currentMatch.end) {
+                    editor.selectionStart = editor.selectionEnd = reverse ? currentMatch.start : currentMatch.end;
+                }
+            }
+            const nextIdx = this.getNextMatchIndex(editor.selectionEnd, reverse);
+            if (nextIdx === -1) {
+                document.getElementById('frStatus').textContent = reverse ? '已到达最前匹配项' : '已到达最后匹配项';
+                return;
+            }
+            this.frMatchIndex = nextIdx;
+            const m = this.frMatches[nextIdx];
+            editor.focus();
+            editor.setSelectionRange(m.start, m.end);
+            this.scrollEditorToCharIndex(m.start);
+            document.getElementById('frStatus').textContent = `${this.frMatchIndex + 1} / ${this.frMatches.length} 处匹配`;
+        },
+        getPixelOffsetForCharIndex(index) {
+            if (!this._measurer) {
+                this._measurer = document.createElement('div');
+                this._measurer.style.cssText = 'position:absolute;visibility:hidden;top:0;left:-9999px;white-space:pre-wrap;word-break:break-word;overflow-wrap:break-word;tab-size:4';
+                document.body.appendChild(this._measurer);
+            }
+            const m = this._measurer;
+            const style = getComputedStyle(editor);
+            m.style.fontFamily = this.fontFamily;
+            m.style.fontSize = this.fontSize + 'px';
+            m.style.lineHeight = this.lineHeight;
+            m.style.letterSpacing = style.letterSpacing;
+            m.style.padding = style.padding;
+            m.style.border = style.border;
+            m.style.width = editor.clientWidth + 'px';
+            m.style.tabSize = style.tabSize || '4';
+            m.style.whiteSpace = editor.style.whiteSpace || 'pre-wrap';
+            m.textContent = '';
+            m.appendChild(document.createTextNode(editor.value.slice(0, index)));
+            const marker = document.createElement('span');
+            marker.textContent = '\u200b';
+            m.appendChild(marker);
+            return marker.offsetTop;
+        },
+        scrollEditorToCharIndex(index) {
+            const paddingTop = parseFloat(getComputedStyle(editor).paddingTop) || 0;
+            const targetLineTop = this.getPixelOffsetForCharIndex(index);
+            const visibleHeight = editor.clientHeight;
+            const offset = visibleHeight * 0.20;
+            const targetScroll = Math.max(0, targetLineTop - paddingTop - offset);
+            editor.scrollTo({ top: targetScroll, behavior: 'smooth' });
+        },
+        replaceOne() {
+            const findInput = document.getElementById('frFindInput');
+            const query = findInput.value;
+            if (!query || this.frMatchIndex === -1 || !this.frMatches[this.frMatchIndex]) return;
+            const m = this.frMatches[this.frMatchIndex];
+            const replacement = document.getElementById('frReplaceInput').value;
+            editor.setRangeText(replacement, m.start, m.end, 'end');
+            this.markDirty(); this.scheduleUIUpdate();
+            this.performSearch();
+        },
+        async replaceAll() {
+            const findInput = document.getElementById('frFindInput');
+            const query = findInput.value;
+            if (!query) return;
+            const caseSensitive = document.getElementById('frCaseSensitive').checked;
+            const wholeWord = document.getElementById('frWholeWord').checked;
+            const re = new RegExp(this.buildPattern(query, caseSensitive, wholeWord), caseSensitive ? 'g' : 'gi');
+            const count = (editor.value.match(re) || []).length;
+            if (count === 0) { document.getElementById('frStatus').textContent = `找不到"${query}"`; return; }
+            editor.value = editor.value.replace(re, document.getElementById('frReplaceInput').value);
+            this.markDirty(); this.scheduleUIUpdate();
+            this.frMatchIndex = -1;
+            this.performSearch();
+            document.getElementById('frStatus').textContent = `已替换 ${count} 处`;
+        },
+        openFindReplace(withReplace) {
+            const overlay = document.getElementById('frOverlay');
+            overlay.style.display = 'block';
+            const dialog = document.getElementById('frDialog');
+            dialog.style.left = ''; dialog.style.top = ''; dialog.style.transform = '';
+            document.getElementById('frTitle').textContent = withReplace ? '查找和替换' : '查找';
+            const replaceRow = document.getElementById('frReplaceRow');
+            const replaceOnlyBtns = document.querySelectorAll('.fr-replace-only');
+            replaceRow.style.display = withReplace ? 'block' : 'none';
+            replaceOnlyBtns.forEach(b => b.style.display = withReplace ? '' : 'none');
+            const sel = editor.value.slice(editor.selectionStart, editor.selectionEnd);
+            if (sel && !sel.includes('\n')) document.getElementById('frFindInput').value = sel;
+            this.frMatches = []; this.frMatchIndex = -1;
+            document.getElementById('frStatus').textContent = '';
+            document.getElementById('frFindNext').disabled = true;
+            document.getElementById('frReplaceBtn').disabled = true;
+            document.getElementById('frFindInput').focus();
+            document.getElementById('frFindInput').select();
+        },
+        closeFindReplace() {
+            if (this._matchAbortController) { this._matchAbortController.abort(); this._matchAbortController = null; }
+            document.getElementById('frOverlay').style.display = 'none';
+            this.frMatches = []; this.frMatchIndex = -1;
+        },
+
+        /* ========== 大纲全量解析 ========== */
+        fullOutlineParse(text) {
+            const lines = text.split('\n');
+            const headings = this.parseHeadingsFromLines(lines, 0, 0);
+            for (let i = 0; i < headings.length; i++) {
+                const h = headings[i];
+                const next = headings[i + 1];
+                h.chapterEnd = next ? next.start : text.length;
+                const chapText = text.slice(h.start, h.chapterEnd);
+                h.charCount = this.includePunctuation ? chapText.length : (chapText.match(/[\u4e00-\u9fa5a-zA-Z0-9]/g) || []).length;
+            }
+            return headings;
+        },
+
+        parseHeadingsFromLines(lines, startLineIndex, baseOffset) {
+            const headings = [];
+            const mdHeading = /^(#{1,6})\s+(.+)/;
+            const chPatterns = [
+                /^第[一二三四五六七八九十百千万\d]+[章节部分阶段篇回]/,
+                /^[一二三四五六七八九十百千万]+[、.．]\s*/,
+                /^[\d]+(?:\.[\d]+)*[、.．]?\s+/
+            ];
+            let offset = baseOffset;
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmed = line.trim();
+                if (!trimmed) { offset += line.length + 1; continue; }
+                let level = 0, title = trimmed;
+                const md = trimmed.match(mdHeading);
+                if (md) { level = md[1].length - 1; title = md[2]; }
+                else {
+                    let matched = false;
+                    for (const p of chPatterns) {
+                        if (p.test(trimmed)) {
+                            const numMatch = trimmed.match(/^([\d]+(?:\.[\d]+)*)/);
+                            if (numMatch) level = (numMatch[1].match(/\./g) || []).length;
+                            matched = true; break;
+                        }
+                    }
+                    if (!matched) { offset += line.length + 1; continue; }
+                }
+                headings.push({ line: title, fullLine: trimmed, start: offset, end: offset + line.length, level, lineIndex: startLineIndex + i, charCount: 0, chapterEnd: 0 });
+                offset += line.length + 1;
+            }
+            return headings;
+        },
+
+        computeOutline() {
+            if (!this.hasTabs) return [];
+            if (!this._outlineDirty && this._outlineCache) return this._outlineCache;
+            this._outlineCache = this.fullOutlineParse(editor.value);
+            this._outlineDirty = false;
+            return this._outlineCache;
+        },
+
+        renderOutlineMenu() {
+            const headings = this.computeOutline();
+            outlineDropdown.innerHTML = '';
+            if (!headings.length) {
+                const empty = document.createElement('div');
+                empty.className = 'dropdown-item disabled';
+                empty.textContent = '未检测到标题结构';
+                outlineDropdown.appendChild(empty);
+                return;
+            }
+            headings.forEach(h => {
+                const el = document.createElement('div');
+                // 使用大纲专用类名
+                el.className = 'dropdown-item outline-item';
+                el.style.paddingLeft = (16 + h.level * 16) + 'px';
+
+                const titleSpan = document.createElement('span');
+                titleSpan.className = 'outline-title';
+                titleSpan.textContent = h.line;
+
+                const countSpan = document.createElement('span');
+                countSpan.className = 'outline-count';
+                countSpan.textContent = h.charCount;
+
+                el.appendChild(titleSpan);
+                el.appendChild(countSpan);
+                el.title = `${h.line} - ${h.charCount}字`;
+
+                el.dataset.start = h.start;
+                el.dataset.end = h.end;
+                el.dataset.chapterEnd = h.chapterEnd;
+                el.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.handleOutlineClick(e, h);
+                });
+                outlineDropdown.appendChild(el);
+            });
+        },
+
+        handleOutlineClick(e, h) {
+            const shiftKey = e.shiftKey;
+            outlineMenuItem.classList.add('no-hover');
+            editor.focus();
+            if (shiftKey) {
+                const currentEnd = editor.selectionEnd;
+                const start = Math.min(editor.selectionStart, currentEnd);
+                const end = h.chapterEnd;
+                editor.setSelectionRange(start, end);
+            } else {
+                editor.setSelectionRange(h.start, h.chapterEnd);
+            }
+            this.scrollEditorToCharIndex(h.start);
+            this.updateStats();
+        },
+
+        /* ========== Ctrl+ArrowLeft/Right 切换标签 ========== */
+        switchTabByDelta(delta) {
+            if (!this.hasTabs || this.tabs.length < 2) return;
+            const idx = this.tabs.findIndex(t => t.id === this.activeTabId);
+            const newIdx = (idx + delta + this.tabs.length) % this.tabs.length;
+            this.switchTab(this.tabs[newIdx].id);
+        },
+
+        setupDragAndDrop() {
+            let counter = 0;
+            editorWrap.addEventListener('dragenter', e => { e.preventDefault(); counter++; editorWrap.classList.add('drag-hover'); });
+            editorWrap.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); });
+            editorWrap.addEventListener('dragleave', e => { e.preventDefault(); counter = Math.max(0, counter - 1); if (counter === 0) editorWrap.classList.remove('drag-hover'); });
+            editorWrap.addEventListener('drop', async e => {
+                e.preventDefault(); e.stopPropagation();
+                counter = 0; editorWrap.classList.remove('drag-hover');
+                const items = e.dataTransfer.items;
+                if (!items) return;
+                for (const item of items) {
+                    if (item.kind !== 'file') continue;
+                    if (item.getAsFileSystemHandle) {
+                        try {
+                            const handle = await item.getAsFileSystemHandle();
+                            if (handle?.kind === 'file') {
+                                const file = await handle.getFile();
+                                const result = await this.readFileSmart(file);
+                                await this.openNewTabWithFile(result.text, result.encoding, handle, file.name);
+                                this.addRecentFile(handle, file.name);
+                                continue;
+                            }
+                        } catch {}
+                    }
+                    const file = item.getAsFile();
+                    if (file) {
+                        const result = await this.readFileSmart(file);
+                        await this.openNewTabWithFile(result.text, result.encoding, null, file.name);
+                    }
+                }
+            });
+        },
+
+        setupTabScroll() {
+            const tabBar = document.getElementById('tabBar');
+            const tabList = document.getElementById('tabList');
+            tabBar.addEventListener('wheel', (e) => {
+                if (e.deltaY !== 0) {
+                    e.preventDefault();
+                    tabList.scrollLeft += e.deltaY;
+                }
+            }, { passive: false });
+        },
+
+        bindEvents() {
+            newTabBtn.addEventListener('click', () => this.newFile());
+            document.querySelectorAll('.dropdown-item[data-action]').forEach(item => {
+                item.addEventListener('click', () => this.doAction(item.dataset.action));
+            });
+            editor.addEventListener('input', () => {
+                if (!this.hasTabs) return;
+                this.pushUndo(this.active);
+                this.markDirty();
+                this.scheduleUIUpdate();
+            });
+            document.addEventListener('selectionchange', () => {
+                if (document.activeElement === editor && this.hasTabs) this.updateStats();
+            });
+            editor.addEventListener('paste', (e) => {
+                if (!this.hasTabs) return;
+                e.preventDefault();
+                const text = (e.clipboardData || window.clipboardData).getData('text');
+                editor.setRangeText(text, editor.selectionStart, editor.selectionEnd, 'end');
+                this.pushUndo(this.active);
+                this.markDirty(); this.scheduleUIUpdate();
+            });
+            editor.addEventListener('keydown', e => {
+                if (!this.hasTabs) return;
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = editor.selectionStart, end = editor.selectionEnd;
+                    if (!e.shiftKey) {
+                        editor.setRangeText('\t', start, end, 'end');
+                        editor.selectionStart = editor.selectionEnd = start + 1;
+                    } else {
+                        const lineStart = editor.value.lastIndexOf('\n', start - 1) + 1;
+                        const block = editor.value.slice(lineStart, end);
+                        const newBlock = block.split('\n').map(line => line.startsWith('\t') ? line.slice(1) : line.startsWith('    ') ? line.slice(4) : line).join('\n');
+                        editor.setRangeText(newBlock, lineStart, end, 'end');
+                    }
+                    this.pushUndo(this.active);
+                    this.markDirty(); this.scheduleUIUpdate();
+                }
+            });
+            document.addEventListener('keydown', e => {
+                const ctrl = e.ctrlKey || e.metaKey;
+                if (ctrl && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                    e.preventDefault();
+                    if (e.key === 'ArrowLeft') this.switchTabByDelta(-1);
+                    else this.switchTabByDelta(1);
+                    return;
+                }
+                if (!ctrl) return;
+                const key = e.key.toLowerCase();
+                if (key === 'n') { e.preventDefault(); this.newFile(); }
+                else if (key === 'o') { e.preventDefault(); this.openFile(); }
+                else if (key === 's') { e.preventDefault(); if (this.hasTabs) e.shiftKey ? this.saveAsFile() : this.saveFile(); }
+                else if (key === 'w') { e.preventDefault(); if (this.hasTabs) e.shiftKey ? this.closeTab(this.activeTabId) : (this.isWordWrap = !this.isWordWrap, this.applyWordWrap()); }
+                else if (key === 'f') { e.preventDefault(); if (this.hasTabs) this.openFindReplace(false); }
+                else if (key === 'h') { e.preventDefault(); if (this.hasTabs) this.openFindReplace(true); }
+                else if (key === 'z') { e.preventDefault(); if (this.hasTabs) this.undo(); }
+                else if (key === 'y') { e.preventDefault(); if (this.hasTabs) this.redo(); }
+                else if (key === '=' || key === '+') { e.preventDefault(); this.adjustFontSize(2); }
+                else if (key === '-' || key === '_') { e.preventDefault(); this.adjustFontSize(-2); }
+                else if (key === '0') { e.preventDefault(); this.resetFontSize(); }
+            });
+            document.getElementById('frSearch').addEventListener('click', () => this.performSearch());
+            document.getElementById('frFindNext').addEventListener('click', () => this.findNext());
+            document.getElementById('frReplaceBtn').addEventListener('click', () => this.replaceOne());
+            document.getElementById('frReplaceAll').addEventListener('click', () => this.replaceAll());
+            document.getElementById('frClose').addEventListener('click', () => { this.closeFindReplace(); if (this.hasTabs) editor.focus(); });
+            document.getElementById('frCancel').addEventListener('click', () => { this.closeFindReplace(); if (this.hasTabs) editor.focus(); });
+            const findInput = document.getElementById('frFindInput');
+            findInput.addEventListener('input', () => {
+                this.frMatches = []; this.frMatchIndex = -1;
+                document.getElementById('frFindNext').disabled = true;
+                document.getElementById('frReplaceBtn').disabled = true;
+                document.getElementById('frStatus').textContent = '';
+            });
+            document.getElementById('frCaseSensitive').addEventListener('change', () => {});
+            document.getElementById('frWholeWord').addEventListener('change', () => {});
+            document.getElementById('frReverse').addEventListener('change', () => {
+                document.getElementById('frFindNext').textContent = document.getElementById('frReverse').checked ? '查找上一个' : '查找下一个';
+            });
+            findInput.addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); this.performSearch(); }
+                if (e.key === 'Escape') { this.closeFindReplace(); if (this.hasTabs) editor.focus(); }
+            });
+            document.getElementById('frReplaceInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter') { e.preventDefault(); this.replaceOne(); }
+                if (e.key === 'Escape') { this.closeFindReplace(); if (this.hasTabs) editor.focus(); }
+            });
+            const frHeader = document.getElementById('frHeader');
+            const frDialog = document.getElementById('frDialog');
+            let dragData = null;
+            frHeader.addEventListener('mousedown', e => {
+                const rect = frDialog.getBoundingClientRect();
+                dragData = { dx: e.clientX - rect.left, dy: e.clientY - rect.top };
+                frDialog.style.left = rect.left + 'px'; frDialog.style.top = rect.top + 'px'; frDialog.style.transform = 'none';
+                e.preventDefault();
+            });
+            document.addEventListener('mousemove', e => {
+                if (!dragData) return;
+                frDialog.style.left = Math.min(Math.max(8, e.clientX - dragData.dx), innerWidth - frDialog.offsetWidth - 8) + 'px';
+                frDialog.style.top = Math.min(Math.max(8, e.clientY - dragData.dy), innerHeight - frDialog.offsetHeight - 8) + 'px';
+            });
+            document.addEventListener('mouseup', () => { dragData = null; });
+            outlineMenuItem.addEventListener('mouseenter', () => this.renderOutlineMenu());
+            outlineMenuItem.addEventListener('click', () => this.renderOutlineMenu());
+            outlineMenuItem.addEventListener('mouseleave', () => outlineMenuItem.classList.remove('no-hover'));
+            window.addEventListener('beforeunload', e => {
+                if (this.tabs.some(t => t.isDirty)) { e.preventDefault(); e.returnValue = ''; }
+            });
+            this.setupTabScroll();
+        },
+
+        async doAction(action) {
+            switch(action) {
+                case 'new': this.newFile(); break;
+                case 'open': this.openFile(); break;
+                case 'save': if (this.hasTabs) this.saveFile(); break;
+                case 'saveas': if (this.hasTabs) this.saveAsFile(); break;
+                case 'closeTab': if (this.hasTabs) this.closeTab(this.activeTabId); break;
+                case 'undo': if (this.hasTabs) this.undo(); break;
+                case 'redo': if (this.hasTabs) this.redo(); break;
+                case 'cut': if (this.hasTabs) { editor.focus(); document.execCommand('cut'); this.pushUndo(this.active); this.markDirty(); this.scheduleUIUpdate(); } break;
+                case 'copy': if (this.hasTabs) { editor.focus(); document.execCommand('copy'); } break;
+                case 'paste': break;
+                case 'selectall': if (this.hasTabs) { editor.select(); this.updateStats(); } break;
+                case 'wordwrap': this.isWordWrap = !this.isWordWrap; if (this.hasTabs) this.applyWordWrap(); break;
+                case 'statusbar': this.isStatusBarVisible = !this.isStatusBarVisible; statusBar.classList.toggle('hidden', !this.isStatusBarVisible); this.updateStatusBarMark(); break;
+                case 'togglePunctuation': this.includePunctuation = !this.includePunctuation; if (this.hasTabs) this.updateStats(); this._outlineDirty = true; break;
+                case 'toggleLineCount': this.showLineCount = !this.showLineCount; if (this.hasTabs) this.updateStats(); break;
+                case 'themeDefault': this.applyTheme('default'); break;
+                case 'themeDark': this.applyTheme('dark'); break;
+                case 'themeEyeCare': this.applyTheme('eye-care'); break;
+                case 'themeWarm': this.applyTheme('warm'); break;
+                case 'fontStyleDefault': this.setFontStyle('default'); break;
+                case 'fontStyleSans': this.setFontStyle('sans'); break;
+                case 'fontStyleSerif': this.setFontStyle('serif'); break;
+                case 'fontStyleMono': this.setFontStyle('mono'); break;
+                case 'fontIncrease': this.adjustFontSize(2); break;
+                case 'fontDecrease': this.adjustFontSize(-2); break;
+                case 'fontReset': this.resetFontSize(); break;
+                case 'lineHeight15': this.setLineHeight(1.5); break;
+                case 'lineHeight165': this.setLineHeight(1.65); break;
+                case 'lineHeight18': this.setLineHeight(1.8); break;
+                case 'lineHeight20': this.setLineHeight(2.0); break;
+                case 'find': if (this.hasTabs) this.openFindReplace(false); break;
+                case 'replace': if (this.hasTabs) this.openFindReplace(true); break;
+            }
+        },
+
+        renderTabBar() {
+            tabList.innerHTML = '';
+            this.tabs.forEach(tab => {
+                const isActive = tab.id === this.activeTabId;
+                const el = document.createElement('div');
+                el.className = 'tab' + (isActive ? ' active' : '');
+                el.title = (tab.lastSaveInfo ? `${tab.name}  ${tab.lastSaveInfo}` : tab.name) || '未命名';
+                const label = document.createElement('span');
+                label.className = 'tab-label';
+                label.textContent = (tab.isDirty ? '● ' : '') + (tab.name || '未命名');
+                el.appendChild(label);
+                const closeBtn = document.createElement('span');
+                closeBtn.className = 'tab-close';
+                closeBtn.textContent = '✕';
+                closeBtn.addEventListener('click', (ev) => { ev.stopPropagation(); this.closeTab(tab.id); });
+                el.appendChild(closeBtn);
+                el.addEventListener('click', () => this.switchTab(tab.id));
+                tabList.appendChild(el);
+            });
+        },
+
+        scheduleUIUpdate() {
+            if (this.updatePending) return;
+            this.updatePending = true;
+            requestAnimationFrame(() => {
+                this.updateStats();
+                this.updatePending = false;
+            });
+        },
+
+        init() {
+            editor.style.whiteSpace = 'pre-wrap';
+            editor.style.overflowX = 'hidden';
+            editor.style.overflowY = 'auto';
+            const savedTheme = localStorage.getItem('notepad-theme') || 'default';
+            const savedFontStyle = localStorage.getItem('notepad-font-style') || 'default';
+            const savedFontSize = localStorage.getItem('notepad-font-size');
+            const savedLineHeight = localStorage.getItem('notepad-line-height');
+            this.applyTheme(savedTheme);
+            this.setFontStyle(savedFontStyle);
+            if (savedFontSize) this.setFontSize(Number(savedFontSize));
+            else this.setFontSize(14);
+            if (savedLineHeight) this.setLineHeight(Number(savedLineHeight));
+            else this.setLineHeight(1.65);
+            document.getElementById('wordWrapMark').textContent = this.isWordWrap ? '✓' : ' ';
+            document.getElementById('statusBarMark').textContent = this.isStatusBarVisible ? '✓' : ' ';
+            this.updateEditorState();
+            this.setupDragAndDrop();
+            this.bindEvents();
+        }
+    };
+
+    App.init();
+})();
+</script>
+</body>
+</html>
