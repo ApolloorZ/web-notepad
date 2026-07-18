@@ -53,10 +53,7 @@
 
 ## 📸 截图
 
-![浅色主题](screenshots/1.png)
-![深色主题](screenshots/2.png)
-![护眼主题](screenshots/3.png)
-![复古主题](screenshots/4.png)
+<img width="1920" height="1080" alt="1" src="https://github.com/user-attachments/assets/b8e67b6e-7513-4f8b-848c-a46445cac9f7" />
 
 ## ⚙️ 浏览器兼容性
 
