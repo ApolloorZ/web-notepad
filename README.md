@@ -53,7 +53,10 @@
 
 ## 📸 截图
 
-（这里可以放几张不同主题的截图）
+![浅色主题](screenshots/1.png)
+![深色主题](screenshots/2.png)
+![护眼主题](screenshots/3.png)
+![复古主题](screenshots/4.png)
 
 ## ⚙️ 浏览器兼容性
 
